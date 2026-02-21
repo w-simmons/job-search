@@ -18,21 +18,39 @@ const usePostgres = isProduction && !!process.env.DATABASE_URL;
 // Helper to check which db we're using
 export const dbType = usePostgres ? "postgres" : "sqlite" as const;
 
+// Create a chainable mock that returns empty results
+function createMockDb() {
+  const createChainable = (): any => {
+    const handler: ProxyHandler<any> = {
+      get(_, prop) {
+        if (prop === 'then') {
+          // Make it thenable - resolve to empty array
+          return (resolve: (value: any) => void) => resolve([]);
+        }
+        // Return another chainable proxy for method chaining
+        return (..._args: unknown[]) => new Proxy({}, handler);
+      },
+      apply() {
+        return new Proxy({}, handler);
+      }
+    };
+    return new Proxy(function() {}, handler);
+  };
+
+  return new Proxy({}, {
+    get(_, prop) {
+      if (prop === 'then') return undefined;
+      return createChainable();
+    }
+  });
+}
+
 // Create the database connection
 function createDatabase() {
-  // During build, return a proxy that throws helpful errors at runtime
+  // During build or production without DB, return mock
   if (isBuildTime || (isProduction && !process.env.DATABASE_URL)) {
-    return new Proxy({} as any, {
-      get(_, prop) {
-        // Allow schema exports to work during build
-        if (prop === 'then') return undefined;
-        
-        return (...args: unknown[]) => {
-          console.warn(`DB operation called during build or without DATABASE_URL: ${String(prop)}`);
-          return Promise.resolve([]);
-        };
-      },
-    });
+    console.log("📊 Using mock database (no DATABASE_URL)");
+    return createMockDb();
   }
 
   if (usePostgres) {
