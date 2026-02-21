@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobs, savedSearches, jobInteractions, desc, eq, notInArray, type SavedSearch } from "@/lib/db";
 import { JobList } from "@/components/jobs";
 import Link from "next/link";

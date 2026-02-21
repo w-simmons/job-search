@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, jobs } from "@/lib/db";
-import { desc, ilike, or, and, eq } from "drizzle-orm";
+import { desc, ilike, or, and, eq, SQL } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -11,16 +11,15 @@ export async function GET(request: NextRequest) {
   const offset = parseInt(searchParams.get("offset") || "0");
 
   try {
-    const conditions = [];
+    const conditions: SQL[] = [];
 
     if (query) {
-      conditions.push(
-        or(
-          ilike(jobs.title, `%${query}%`),
-          ilike(jobs.company, `%${query}%`),
-          ilike(jobs.description, `%${query}%`)
-        )
+      const orCondition = or(
+        ilike(jobs.title, `%${query}%`),
+        ilike(jobs.company, `%${query}%`),
+        ilike(jobs.description, `%${query}%`)
       );
+      if (orCondition) conditions.push(orCondition);
     }
 
     if (source) {

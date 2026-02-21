@@ -1,5 +1,6 @@
+export const dynamic = "force-dynamic";
 import { db, jobs } from "@/lib/db";
-import { desc, like, and, eq, gte, or } from "drizzle-orm";
+import { desc, like, and, eq, gte, or, SQL } from "drizzle-orm";
 import { JobList } from "@/components/jobs";
 import { JobFiltersClient } from "./filters-client";
 
@@ -18,17 +19,16 @@ interface JobsPageProps {
 }
 
 async function getJobs(params: Awaited<JobsPageProps["searchParams"]>) {
-  const conditions = [];
+  const conditions: SQL[] = [];
 
   if (params.q) {
     const q = `%${params.q}%`;
-    conditions.push(
-      or(
-        like(jobs.title, q),
-        like(jobs.company, q),
-        like(jobs.description, q)
-      )
+    const orCondition = or(
+      like(jobs.title, q),
+      like(jobs.company, q),
+      like(jobs.description, q)
     );
+    if (orCondition) conditions.push(orCondition);
   }
 
   if (params.location) {

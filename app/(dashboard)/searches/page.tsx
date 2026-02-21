@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, savedSearches, desc, type SavedSearch } from "@/lib/db";
 import { SavedSearchCard } from "@/components/search";
 import Link from "next/link";

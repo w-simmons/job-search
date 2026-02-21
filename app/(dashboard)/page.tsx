@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobs, jobInteractions, savedSearches, jobSources, count, desc, eq, sql, type Job } from "@/lib/db";
 import { StatsCard } from "@/components/admin";
 import { JobCard } from "@/components/jobs";

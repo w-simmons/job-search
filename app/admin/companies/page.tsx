@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, companies, jobs } from "@/lib/db";
 import { desc, count } from "drizzle-orm";
 
@@ -72,7 +73,7 @@ export default async function CompaniesPage() {
           </p>
         </div>
         <div className="p-4 flex flex-wrap gap-2">
-          {companyStats.map((stat, i) => (
+          {companyStats.map((stat: { company: string | null; count: number }, i: number) => (
             <button
               key={i}
               className="px-3 py-1.5 border rounded-lg text-sm hover:bg-blue-50 hover:border-blue-300 transition-colors"

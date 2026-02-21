@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobSources } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { ScrapeControls } from "@/components/admin";

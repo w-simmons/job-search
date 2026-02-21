@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobs, jobSources, companies } from "@/lib/db";
 import { count, eq, desc, sql } from "drizzle-orm";
 import { StatsCard } from "@/components/admin";

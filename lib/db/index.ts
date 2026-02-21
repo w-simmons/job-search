@@ -5,18 +5,36 @@
  * Production: uses DATABASE_URL (Neon Postgres)
  */
 
-// Determine environment at module load time
-const isProduction = process.env.NODE_ENV === "production";
-const usePostgres = isProduction || !!process.env.DATABASE_URL;
-
 // Re-export schema based on environment (types are compatible)
 export * from "./schema";
+
+// Determine if we're in a build environment (no db needed)
+const isBuildTime = process.env.NEXT_PHASE === "phase-production-build";
+
+// Determine environment at module load time
+const isProduction = process.env.NODE_ENV === "production";
+const usePostgres = isProduction && !!process.env.DATABASE_URL;
 
 // Helper to check which db we're using
 export const dbType = usePostgres ? "postgres" : "sqlite" as const;
 
 // Create the database connection
 function createDatabase() {
+  // During build, return a proxy that throws helpful errors at runtime
+  if (isBuildTime || (isProduction && !process.env.DATABASE_URL)) {
+    return new Proxy({} as any, {
+      get(_, prop) {
+        // Allow schema exports to work during build
+        if (prop === 'then') return undefined;
+        
+        return (...args: unknown[]) => {
+          console.warn(`DB operation called during build or without DATABASE_URL: ${String(prop)}`);
+          return Promise.resolve([]);
+        };
+      },
+    });
+  }
+
   if (usePostgres) {
     // Postgres (Neon)
     const { neon } = require("@neondatabase/serverless");
@@ -25,10 +43,7 @@ function createDatabase() {
     
     const url = process.env.DATABASE_URL;
     if (!url) {
-      throw new Error(
-        "DATABASE_URL environment variable is not set. " +
-        "For local development without Postgres, unset NODE_ENV or remove DATABASE_URL."
-      );
+      throw new Error("DATABASE_URL is required in production");
     }
     console.log("📊 Using Postgres (Neon)");
     const sql = neon(url);

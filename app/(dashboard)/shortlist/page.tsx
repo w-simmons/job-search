@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobs, jobInteractions } from "@/lib/db";
 import { desc, eq } from "drizzle-orm";
 import { JobList } from "@/components/jobs";
@@ -10,7 +11,7 @@ async function getShortlistedJobs() {
     .from(jobInteractions)
     .where(eq(jobInteractions.action, "saved"));
 
-  const jobIds = savedInteractions.map(i => i.jobId);
+  const jobIds = savedInteractions.map((i: { jobId: number }) => i.jobId);
   
   if (jobIds.length === 0) {
     return [];

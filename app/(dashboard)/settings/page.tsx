@@ -1,11 +1,13 @@
+export const dynamic = "force-dynamic";
 import { db, userSettings } from "@/lib/db";
 
-async function getSettings() {
+async function getSettings(): Promise<Record<string, unknown>> {
   const settings = await db.select().from(userSettings);
-  return settings.reduce((acc, s) => {
-    acc[s.key] = s.value;
-    return acc;
-  }, {} as Record<string, unknown>);
+  const result: Record<string, unknown> = {};
+  for (const s of settings) {
+    result[s.key] = s.value;
+  }
+  return result;
 }
 
 export default async function SettingsPage() {

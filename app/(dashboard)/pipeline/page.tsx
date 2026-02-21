@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, jobs, jobInteractions, PIPELINE_STAGES, isNotNull, type Job, type JobInteraction } from "@/lib/db";
 import { KanbanBoard } from "@/components/pipeline";
 import Link from "next/link";
