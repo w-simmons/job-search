@@ -1,135 +1,137 @@
-"use client";
+import { db, jobs, jobInteractions, savedSearches, jobSources, count, desc, eq, sql, type Job } from "@/lib/db";
+import { StatsCard } from "@/components/admin";
+import { JobCard } from "@/components/jobs";
+import Link from "next/link";
 
-import { useState } from "react";
+async function getStats() {
+  // These queries work with both SQLite and Postgres
+  const [jobCount] = await db.select({ count: count() }).from(jobs);
+  const [savedCount] = await db.select({ count: count() }).from(savedSearches);
+  const [sourceCount] = await db.select({ count: count() }).from(jobSources);
+  const [interactionCount] = await db.select({ count: count() })
+    .from(jobInteractions)
+    .where(eq(jobInteractions.action, "applied"));
 
-interface Job {
-  id: number;
-  title: string;
-  company: string;
-  location: string | null;
-  salary: string | null;
-  isRemote: boolean;
-  source: string;
-  url: string;
-  postedAt: string | null;
+  return {
+    totalJobs: jobCount?.count || 0,
+    savedSearches: savedCount?.count || 0,
+    activeSources: sourceCount?.count || 0,
+    applications: interactionCount?.count || 0,
+  };
 }
 
-export default function DashboardPage() {
-  const [query, setQuery] = useState("");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(false);
+async function getRecentJobs() {
+  return db.select().from(jobs).orderBy(desc(jobs.scrapedAt)).limit(5);
+}
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+async function getPipelineJobs() {
+  const result = await db
+    .select()
+    .from(jobInteractions)
+    .where(sql`${jobInteractions.pipelineStage} IS NOT NULL`)
+    .limit(10);
+  return result.length;
+}
 
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/jobs?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      setJobs(data.jobs || []);
-    } catch (error) {
-      console.error("Search failed:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default async function DashboardPage() {
+  const [stats, recentJobs, pipelineCount] = await Promise.all([
+    getStats(),
+    getRecentJobs(),
+    getPipelineJobs(),
+  ]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">Job Search</h1>
-          <p className="text-gray-600 mt-1">
-            Cross-source semantic job search for the US market
-          </p>
+    <div className="space-y-6">
+      {/* Welcome */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Welcome back! 👋</h2>
+        <p className="text-gray-600 mt-1">
+          Here&apos;s what&apos;s happening with your job search.
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Jobs"
+          value={stats.totalJobs}
+          icon="💼"
+        />
+        <StatsCard
+          title="In Pipeline"
+          value={pipelineCount}
+          icon="📋"
+        />
+        <StatsCard
+          title="Applications"
+          value={stats.applications}
+          icon="📝"
+        />
+        <StatsCard
+          title="Saved Searches"
+          value={stats.savedSearches}
+          icon="🔔"
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg border p-4">
+        <h3 className="font-semibold text-gray-800 mb-3">Quick Actions</h3>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/jobs"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            🔍 Browse Jobs
+          </Link>
+          <Link
+            href="/discover"
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            ✨ New Matches
+          </Link>
+          <Link
+            href="/pipeline"
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            📋 View Pipeline
+          </Link>
+          <Link
+            href="/searches"
+            className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            ➕ New Search
+          </Link>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Search Form */}
-        <form onSubmit={handleSearch} className="mb-8">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search jobs by title, company, or keywords..."
-              className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-            >
-              {loading ? "Searching..." : "Search"}
-            </button>
-          </div>
-        </form>
-
-        {/* Filters (placeholder) */}
-        <div className="flex gap-2 mb-6">
-          <span className="px-3 py-1 bg-gray-200 rounded-full text-sm">
-            Remote
-          </span>
-          <span className="px-3 py-1 bg-gray-200 rounded-full text-sm">
-            Full-time
-          </span>
-          <span className="px-3 py-1 bg-gray-200 rounded-full text-sm">
-            $100k+
-          </span>
+      {/* Recent Jobs */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold text-gray-800">Recently Added Jobs</h3>
+          <Link href="/jobs" className="text-sm text-blue-600 hover:underline">
+            View all →
+          </Link>
         </div>
-
-        {/* Results */}
-        {jobs.length > 0 ? (
-          <div className="space-y-4">
-            {jobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 transition-colors"
+        <div className="space-y-3">
+          {recentJobs.length > 0 ? (
+            recentJobs.map((job: Job) => (
+              <JobCard key={job.id} job={job} showActions={false} />
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500 bg-white rounded-lg border">
+              <p className="text-4xl mb-2">📭</p>
+              <p>No jobs yet. Run a scrape to get started!</p>
+              <Link
+                href="/admin/scrape"
+                className="mt-2 inline-block text-blue-600 hover:underline"
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      {job.title}
-                    </h2>
-                    <p className="text-gray-600 mt-1">{job.company}</p>
-                    <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                      {job.location && <span>📍 {job.location}</span>}
-                      {job.isRemote && (
-                        <span className="text-green-600">🏠 Remote</span>
-                      )}
-                      {job.salary && <span>💰 {job.salary}</span>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
-                      {job.source}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-3">
-                  <a
-                    href={job.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
-                  >
-                    View Original →
-                  </a>
-                  <button className="text-gray-600 hover:text-gray-900 text-sm">
-                    Save
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <p>Search for jobs to get started</p>
-          </div>
-        )}
-      </main>
+                Go to Scrape Tools →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

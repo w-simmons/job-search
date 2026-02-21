@@ -1,6 +1,6 @@
 import { Sidebar, Header, PageContainer } from "@/components/layout";
 
-export default function DashboardLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <PageContainer>{children}</PageContainer>
+        <PageContainer className="bg-gray-100">{children}</PageContainer>
       </div>
     </div>
   );
